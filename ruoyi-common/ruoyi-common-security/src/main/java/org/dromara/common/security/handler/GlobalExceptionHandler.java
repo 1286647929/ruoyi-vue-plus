@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.core.exception.DemoModeException;
 import org.dromara.common.core.exception.ServiceException;
+import org.dromara.common.core.exception.carduser.UserExpireException;
 import org.dromara.common.core.utils.StreamUtils;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.validation.BindException;
@@ -158,5 +159,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DemoModeException.class)
     public R<Void> handleDemoModeException(DemoModeException e) {
         return R.fail("演示模式，不允许操作");
+    }
+
+    /**
+     * 卡密异常
+     * @param e
+     * @return
+     */
+    @ExceptionHandler(UserExpireException.class)
+    public R<Void> handleUserExpireException(UserExpireException e){
+        return R.fail(e.getMessage());
     }
 }
