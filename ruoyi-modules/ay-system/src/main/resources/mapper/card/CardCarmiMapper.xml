@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.card.mapper.CardCarmiMapper">
+
+    <update id="updateStatus">
+        update card_carmi set status = 1 where card_key = #{cardKey}
+    </update>
+
+	<select id="getCarmiOne" resultType="org.dromara.card.domain.vo.CardCarmiVo">
+        select * from card_carmi where card_type = #{cardType} and status = 0 limit 1
+    </select>
+
+</mapper>
