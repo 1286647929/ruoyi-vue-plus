@@ -1,15 +1,16 @@
 package org.dromara.card.domain.bo;
 
-import org.dromara.card.domain.CardUser;
-import org.dromara.common.mybatis.core.domain.BaseEntity;
-import org.dromara.common.core.validate.AddGroup;
-import org.dromara.common.core.validate.EditGroup;
 import io.github.linpeilie.annotations.AutoMapper;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import jakarta.validation.constraints.*;
+import org.dromara.card.domain.CardUser;
+import org.dromara.common.core.validate.AddGroup;
+import org.dromara.common.core.validate.EditGroup;
+import org.dromara.common.mybatis.core.domain.BaseEntity;
+
 import java.util.Date;
-import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * 用户信息业务对象 card_user
@@ -43,7 +44,6 @@ public class CardUserBo extends BaseEntity {
     /**
      * 密码
      */
-    @NotBlank(message = "密码不能为空", groups = { AddGroup.class, EditGroup.class })
     private String password;
 
     /**

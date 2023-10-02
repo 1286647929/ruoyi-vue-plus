@@ -2,6 +2,7 @@ package org.dromara.card.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaIgnore;
+import cn.dev33.satoken.secure.BCrypt;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -116,7 +117,20 @@ public class CardUserController extends BaseController {
     @SaIgnore
     @PutMapping("/expire")
     public R<CardUserVo> usereExpire(@Validated(EditGroup.class) @RequestBody UserCarmiBo userCarmiBo){
-        return R.ok(cardUserService.expireByUserId(userCarmiBo.getUserId(), userCarmiBo.getCardKey()));
+        return R.ok(cardUserService.expireByUserName(userCarmiBo.getUserName(), userCarmiBo.getCardKey()));
+    }
+
+    /**
+     * 用户密码重置
+     * @param user
+     * @return
+     */
+    @SaCheckPermission("card:user:resetPwd")
+    @Log(title = "用户信息", businessType = BusinessType.UPDATE)
+    @PutMapping("/resetPwd")
+    public R<Void> resetPwd(@RequestBody CardUserBo user){
+        user.setPassword(BCrypt.hashpw(user.getPassword()));
+        return toAjax(cardUserService.resetUserPwd(user.getUserId(),user.getPassword()));
     }
 
     /**

@@ -151,7 +151,21 @@ public class CardUserServiceImpl implements ICardUserService {
     }
 
     @Override
-    public CardUserVo expireByUserId(Long userId,String cardKey) {
+    public CardUserVo queryByUserName(String userName) {
+        LambdaQueryWrapper<CardUser> queryWrapper = Wrappers.lambdaQuery();
+        queryWrapper
+            .eq(CardUser::getUserName, userName);
+
+        CardUserVo cardUserVo = baseMapper.selectVoOne(queryWrapper);
+        if(cardUserVo != null) {
+            return cardUserVo;
+        }else {
+            throw new ServiceException("用户名错误！");
+        }
+    }
+
+    @Override
+    public CardUserVo expireByUserName(String userName,String cardKey) {
         LambdaQueryWrapper<CardCarmi> queryWrapper = Wrappers.lambdaQuery();
         queryWrapper.eq(CardCarmi::getCardKey,cardKey);
         CardCarmi cardCarmi = cardCarmiMapper.selectOne(queryWrapper);
@@ -163,19 +177,40 @@ public class CardUserServiceImpl implements ICardUserService {
             throw new ServiceException("卡密已被使用！");
         }
         String cardType = cardCarmi.getCardType();
-        CardUserVo cardUserVo = queryById(userId);
+
+        CardUserVo cardUserVo = queryByUserName(userName);
         Date expireTime = cardUserVo.getExpireTime();
+        if (expireTime == null){
+            expireTime = DateUtil.date();
+        }
         DateTime dateTime = DateUtil.offsetDay(expireTime, Convert.toInt(cardType));
 
         LambdaUpdateWrapper<CardUser> updateWrapper = Wrappers.lambdaUpdate();
         updateWrapper.set(CardUser::getExpireTime, dateTime)
-            .eq(CardUser::getUserId,userId);
+            .eq(CardUser::getUserName,userName);
         int update = baseMapper.update(null, updateWrapper);
         if (update>0){
-            cardCarmiMapper.updateStatus(cardKey);
-            return baseMapper.selectVoById(userId);
+//            cardCarmiMapper.updateStatus(cardKey);
+            cardCarmiMapper.update(null,new LambdaUpdateWrapper<CardCarmi>()
+                .set(CardCarmi::getStatus,1)
+                .set(CardCarmi::getRemark,"使用者："+userName)
+                .eq(CardCarmi::getCardKey,cardKey));
+            return baseMapper.selectVoById(cardUserVo.getUserId());
         }else {
             throw new ServiceException("续费失败！请重试");
         }
+    }
+
+    /**
+     * 重置用户密码
+     * @param userId    用户id
+     * @param password  用户密码
+     * @return
+     */
+    @Override
+    public int resetUserPwd(Long userId, String password) {
+        return baseMapper.update(null,new LambdaUpdateWrapper<CardUser>()
+            .set(CardUser::getPassword,password)
+            .eq(CardUser::getUserId,userId));
     }
 }

@@ -57,8 +57,17 @@ public interface ICardUserService {
     CardUser loginByUserName(String userName);
 
     /**
+     * 通过用户名查询
+     * @param userName
+     * @return
+     */
+    CardUserVo queryByUserName(String userName);
+
+    /**
      * 给用户续费时长
      * @return
      */
-    CardUserVo expireByUserId(Long userId,String cardKey);
+    CardUserVo expireByUserName(String userName,String cardKey);
+
+    int resetUserPwd(Long userId, String password);
 }

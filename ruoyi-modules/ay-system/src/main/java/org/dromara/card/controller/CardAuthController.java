@@ -33,10 +33,12 @@ public class CardAuthController extends BaseController {
 
     private final RegisterService registerService;
 
+
     @PostMapping("/login")
     public R<CardUserVo> login(@RequestBody CardUserBo card){
         CardUserVo userVo = loginService.login(card.getUserName(), card.getPassword());
         if (userVo != null){
+            loginService.recordLoginInfo(userVo.getUserId());
             return R.ok("登录成功",userVo);
         }else {
             return R.fail("用户名或密码错误");

@@ -5,7 +5,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.card.domain.CardUser;
 import org.dromara.card.domain.vo.CardUserVo;
+import org.dromara.card.mapper.CardUserMapper;
+import org.dromara.common.core.utils.DateUtils;
 import org.dromara.common.core.utils.MapstructUtils;
+import org.dromara.common.core.utils.ServletUtils;
 import org.springframework.stereotype.Service;
 
 /**
@@ -18,6 +21,7 @@ import org.springframework.stereotype.Service;
 public class LoginService {
     private final ICardUserService userService;
 
+    private final CardUserMapper userMapper;
     /**
      * 登录校验
      * @param userName
@@ -30,5 +34,13 @@ public class LoginService {
             return MapstructUtils.convert(cardUser,CardUserVo.class);
         }
         return null;
+    }
+
+    public void recordLoginInfo(Long userId) {
+        CardUser cardUser = new CardUser();
+        cardUser.setUserId(userId);
+        cardUser.setLoginIp(ServletUtils.getClientIP());
+        cardUser.setLoginDate(DateUtils.getNowDate());
+        userMapper.updateById(cardUser);
     }
 }

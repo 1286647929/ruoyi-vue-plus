@@ -12,7 +12,7 @@ import lombok.Data;
 public class UserCarmiBo {
 
     @NotNull
-    private Long userId;
+    private String userName;
 
     @NotBlank
     private String cardKey;
