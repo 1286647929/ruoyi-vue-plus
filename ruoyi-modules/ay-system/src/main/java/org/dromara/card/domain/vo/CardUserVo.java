@@ -1,14 +1,12 @@
 package org.dromara.card.domain.vo;
 
-import java.util.Date;
-import com.fasterxml.jackson.annotation.JsonFormat;
-import org.dromara.card.domain.CardUser;
 import com.alibaba.excel.annotation.ExcelIgnoreUnannotated;
 import com.alibaba.excel.annotation.ExcelProperty;
-import org.dromara.common.excel.annotation.ExcelDictFormat;
-import org.dromara.common.excel.convert.ExcelDictConvert;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
+import org.dromara.card.domain.CardUser;
+import org.dromara.common.excel.annotation.ExcelDictFormat;
+import org.dromara.common.excel.convert.ExcelDictConvert;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -83,5 +81,9 @@ public class CardUserVo implements Serializable {
     @ExcelProperty(value = "备注")
     private String remark;
 
-
+    /**
+     * 机器码
+     */
+    @ExcelProperty(value = "机器码")
+    private String machineId;
 }

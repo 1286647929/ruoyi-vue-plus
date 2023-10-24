@@ -103,9 +103,9 @@ spring.data:
     # 端口，默认为6379
     port: 6379
     # 数据库索引
-    database: 0
+    database: 1
     # 密码(如没有密码请注释掉)
-    # password:
+    password: w.c.520.
     # 连接超时时间
     timeout: 10s
     # 是否开启ssl

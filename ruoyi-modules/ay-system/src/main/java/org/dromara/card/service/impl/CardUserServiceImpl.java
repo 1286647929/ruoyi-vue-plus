@@ -144,6 +144,9 @@ public class CardUserServiceImpl implements ICardUserService {
 
         CardUser cardUser = baseMapper.selectOne(queryWrapper);
         if(cardUser != null) {
+            if (!cardUser.getStatus().equals("0")){
+                throw new ServiceException("用户已被停用！");
+            }
             return cardUser;
         }else {
             throw new ServiceException("用户名错误！");

@@ -1,6 +1,7 @@
 package org.dromara.system.controller.system;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaIgnore;
 import org.dromara.common.log.annotation.Log;
 import org.dromara.common.web.core.BaseController;
 import org.dromara.common.mybatis.core.page.PageQuery;
@@ -41,7 +42,8 @@ public class SysNoticeController extends BaseController {
      *
      * @param noticeId 公告ID
      */
-    @SaCheckPermission("system:notice:query")
+//    @SaCheckPermission("system:notice:query")
+    @SaIgnore
     @GetMapping(value = "/{noticeId}")
     public R<SysNoticeVo> getInfo(@PathVariable Long noticeId) {
         return R.ok(noticeService.selectNoticeById(noticeId));

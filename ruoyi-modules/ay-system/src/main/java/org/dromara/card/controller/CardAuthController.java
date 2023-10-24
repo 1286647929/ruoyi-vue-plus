@@ -36,7 +36,7 @@ public class CardAuthController extends BaseController {
 
     @PostMapping("/login")
     public R<CardUserVo> login(@RequestBody CardUserBo card){
-        CardUserVo userVo = loginService.login(card.getUserName(), card.getPassword());
+        CardUserVo userVo = loginService.login(card.getUserName(), card.getPassword(),card.getMachineId());
         if (userVo != null){
             loginService.recordLoginInfo(userVo.getUserId());
             return R.ok("登录成功",userVo);

@@ -73,5 +73,8 @@ public class CardUserBo extends BaseEntity {
      */
     private String remark;
 
-
+    /**
+     * 机器码
+     */
+    private String machineId;
 }

@@ -76,5 +76,8 @@ public class CardUser extends TenantEntity {
      */
     private String remark;
 
-
+    /**
+     *机器码
+     */
+    private String machineId;
 }
