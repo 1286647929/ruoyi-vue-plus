@@ -49,6 +49,8 @@ public class RedisConfig {
             CompositeCodec codec = new CompositeCodec(StringCodec.INSTANCE, jsonCodec, jsonCodec);
             config.setThreads(redissonProperties.getThreads())
                 .setNettyThreads(redissonProperties.getNettyThreads())
+                // 缓存 Lua 脚本 减少网络传输(redisson 大部分的功能都是基于 Lua 脚本实现)
+                .setUseScriptCache(true)
                 .setCodec(codec);
             RedissonProperties.SingleServerConfig singleServerConfig = redissonProperties.getSingleServerConfig();
             if (ObjectUtil.isNotNull(singleServerConfig)) {
@@ -96,7 +98,7 @@ public class RedisConfig {
      * redis集群配置 yml
      *
      * --- # redis 集群配置(单机与集群只能开启一个另一个需要注释掉)
-     * spring:
+     * spring.data:
      *   redis:
      *     cluster:
      *       nodes:
@@ -108,7 +110,7 @@ public class RedisConfig {
      *     # 连接超时时间
      *     timeout: 10s
      *     # 是否开启ssl
-     *     ssl: false
+     *     ssl.enabled: false
      *
      * redisson:
      *   # 线程池数量

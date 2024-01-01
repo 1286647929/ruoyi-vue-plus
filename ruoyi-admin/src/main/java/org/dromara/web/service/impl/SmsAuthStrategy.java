@@ -8,8 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.core.constant.Constants;
 import org.dromara.common.core.constant.GlobalConstants;
-import org.dromara.common.core.domain.model.LoginBody;
 import org.dromara.common.core.domain.model.LoginUser;
+import org.dromara.common.core.domain.model.SmsLoginBody;
 import org.dromara.common.core.enums.LoginType;
 import org.dromara.common.core.enums.UserStatus;
 import org.dromara.common.core.exception.user.CaptchaExpireException;
@@ -17,7 +17,7 @@ import org.dromara.common.core.exception.user.UserException;
 import org.dromara.common.core.utils.MessageUtils;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.core.utils.ValidatorUtils;
-import org.dromara.common.core.validate.auth.SmsGroup;
+import org.dromara.common.json.utils.JsonUtils;
 import org.dromara.common.redis.utils.RedisUtils;
 import org.dromara.common.satoken.utils.LoginHelper;
 import org.dromara.common.tenant.helper.TenantHelper;
@@ -44,12 +44,9 @@ public class SmsAuthStrategy implements IAuthStrategy {
     private final SysUserMapper userMapper;
 
     @Override
-    public void validate(LoginBody loginBody) {
-        ValidatorUtils.validate(loginBody, SmsGroup.class);
-    }
-
-    @Override
-    public LoginVo login(String clientId, LoginBody loginBody, SysClient client) {
+    public LoginVo login(String body, SysClient client) {
+        SmsLoginBody loginBody = JsonUtils.parseObject(body, SmsLoginBody.class);
+        ValidatorUtils.validate(loginBody);
         String tenantId = loginBody.getTenantId();
         String phonenumber = loginBody.getPhonenumber();
         String smsCode = loginBody.getSmsCode();
@@ -68,17 +65,14 @@ public class SmsAuthStrategy implements IAuthStrategy {
         // 例如: 后台用户30分钟过期 app用户1天过期
         model.setTimeout(client.getTimeout());
         model.setActiveTimeout(client.getActiveTimeout());
-        model.setExtra(LoginHelper.CLIENT_KEY, clientId);
+        model.setExtra(LoginHelper.CLIENT_KEY, client.getClientId());
         // 生成token
         LoginHelper.login(loginUser, model);
-
-        loginService.recordLogininfor(loginUser.getTenantId(), user.getUserName(), Constants.LOGIN_SUCCESS, MessageUtils.message("user.login.success"));
-        loginService.recordLoginInfo(user.getUserId());
 
         LoginVo loginVo = new LoginVo();
         loginVo.setAccessToken(StpUtil.getTokenValue());
         loginVo.setExpireIn(StpUtil.getTokenTimeout());
-        loginVo.setClientId(clientId);
+        loginVo.setClientId(client.getClientId());
         return loginVo;
     }
 
@@ -95,21 +89,19 @@ public class SmsAuthStrategy implements IAuthStrategy {
     }
 
     private SysUserVo loadUserByPhonenumber(String tenantId, String phonenumber) {
-        SysUser user = userMapper.selectOne(new LambdaQueryWrapper<SysUser>()
-            .select(SysUser::getPhonenumber, SysUser::getStatus)
-            .eq(TenantHelper.isEnable(), SysUser::getTenantId, tenantId)
-            .eq(SysUser::getPhonenumber, phonenumber));
-        if (ObjectUtil.isNull(user)) {
-            log.info("登录用户：{} 不存在.", phonenumber);
-            throw new UserException("user.not.exists", phonenumber);
-        } else if (UserStatus.DISABLE.getCode().equals(user.getStatus())) {
-            log.info("登录用户：{} 已被停用.", phonenumber);
-            throw new UserException("user.blocked", phonenumber);
-        }
-        if (TenantHelper.isEnable()) {
-            return userMapper.selectTenantUserByPhonenumber(phonenumber, tenantId);
-        }
-        return userMapper.selectUserByPhonenumber(phonenumber);
+        return TenantHelper.dynamic(tenantId, () -> {
+            SysUser user = userMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+                .select(SysUser::getPhonenumber, SysUser::getStatus)
+                .eq(SysUser::getPhonenumber, phonenumber));
+            if (ObjectUtil.isNull(user)) {
+                log.info("登录用户：{} 不存在.", phonenumber);
+                throw new UserException("user.not.exists", phonenumber);
+            } else if (UserStatus.DISABLE.getCode().equals(user.getStatus())) {
+                log.info("登录用户：{} 已被停用.", phonenumber);
+                throw new UserException("user.blocked", phonenumber);
+            }
+            return userMapper.selectUserByPhonenumber(phonenumber);
+        });
     }
 
 }

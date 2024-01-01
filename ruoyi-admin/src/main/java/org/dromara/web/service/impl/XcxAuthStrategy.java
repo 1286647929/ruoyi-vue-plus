@@ -5,13 +5,11 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.ObjectUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.dromara.common.core.constant.Constants;
-import org.dromara.common.core.domain.model.LoginBody;
+import org.dromara.common.core.domain.model.XcxLoginBody;
 import org.dromara.common.core.domain.model.XcxLoginUser;
 import org.dromara.common.core.enums.UserStatus;
-import org.dromara.common.core.utils.MessageUtils;
 import org.dromara.common.core.utils.ValidatorUtils;
-import org.dromara.common.core.validate.auth.WechatGroup;
+import org.dromara.common.json.utils.JsonUtils;
 import org.dromara.common.satoken.utils.LoginHelper;
 import org.dromara.system.domain.SysClient;
 import org.dromara.system.domain.vo.SysUserVo;
@@ -33,14 +31,14 @@ public class XcxAuthStrategy implements IAuthStrategy {
     private final SysLoginService loginService;
 
     @Override
-    public void validate(LoginBody loginBody) {
-        ValidatorUtils.validate(loginBody, WechatGroup.class);
-    }
-
-    @Override
-    public LoginVo login(String clientId, LoginBody loginBody, SysClient client) {
+    public LoginVo login(String body, SysClient client) {
+        XcxLoginBody loginBody = JsonUtils.parseObject(body, XcxLoginBody.class);
+        ValidatorUtils.validate(loginBody);
         // xcxCode 为 小程序调用 wx.login 授权后获取
         String xcxCode = loginBody.getXcxCode();
+        // 多个小程序识别使用
+        String appid = loginBody.getAppid();
+
         // todo 以下自行实现
         // 校验 appid + appsrcret + xcxCode 调用登录凭证校验接口 获取 session_key 与 openid
         String openid = "";
@@ -64,17 +62,14 @@ public class XcxAuthStrategy implements IAuthStrategy {
         // 例如: 后台用户30分钟过期 app用户1天过期
         model.setTimeout(client.getTimeout());
         model.setActiveTimeout(client.getActiveTimeout());
-        model.setExtra(LoginHelper.CLIENT_KEY, clientId);
+        model.setExtra(LoginHelper.CLIENT_KEY, client.getClientId());
         // 生成token
         LoginHelper.login(loginUser, model);
-
-        loginService.recordLogininfor(loginUser.getTenantId(), user.getUserName(), Constants.LOGIN_SUCCESS, MessageUtils.message("user.login.success"));
-        loginService.recordLoginInfo(user.getUserId());
 
         LoginVo loginVo = new LoginVo();
         loginVo.setAccessToken(StpUtil.getTokenValue());
         loginVo.setExpireIn(StpUtil.getTokenTimeout());
-        loginVo.setClientId(clientId);
+        loginVo.setClientId(client.getClientId());
         loginVo.setOpenid(openid);
         return loginVo;
     }

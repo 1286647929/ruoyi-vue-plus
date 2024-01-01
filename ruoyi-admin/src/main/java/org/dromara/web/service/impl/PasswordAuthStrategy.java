@@ -9,8 +9,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.common.core.constant.Constants;
 import org.dromara.common.core.constant.GlobalConstants;
-import org.dromara.common.core.domain.model.LoginBody;
 import org.dromara.common.core.domain.model.LoginUser;
+import org.dromara.common.core.domain.model.PasswordLoginBody;
 import org.dromara.common.core.enums.LoginType;
 import org.dromara.common.core.enums.UserStatus;
 import org.dromara.common.core.exception.user.CaptchaException;
@@ -19,7 +19,7 @@ import org.dromara.common.core.exception.user.UserException;
 import org.dromara.common.core.utils.MessageUtils;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.core.utils.ValidatorUtils;
-import org.dromara.common.core.validate.auth.PasswordGroup;
+import org.dromara.common.json.utils.JsonUtils;
 import org.dromara.common.redis.utils.RedisUtils;
 import org.dromara.common.satoken.utils.LoginHelper;
 import org.dromara.common.tenant.helper.TenantHelper;
@@ -48,12 +48,9 @@ public class PasswordAuthStrategy implements IAuthStrategy {
     private final SysUserMapper userMapper;
 
     @Override
-    public void validate(LoginBody loginBody) {
-        ValidatorUtils.validate(loginBody, PasswordGroup.class);
-    }
-
-    @Override
-    public LoginVo login(String clientId, LoginBody loginBody, SysClient client) {
+    public LoginVo login(String body, SysClient client) {
+        PasswordLoginBody loginBody = JsonUtils.parseObject(body, PasswordLoginBody.class);
+        ValidatorUtils.validate(loginBody);
         String tenantId = loginBody.getTenantId();
         String username = loginBody.getUsername();
         String password = loginBody.getPassword();
@@ -78,17 +75,14 @@ public class PasswordAuthStrategy implements IAuthStrategy {
         // 例如: 后台用户30分钟过期 app用户1天过期
         model.setTimeout(client.getTimeout());
         model.setActiveTimeout(client.getActiveTimeout());
-        model.setExtra(LoginHelper.CLIENT_KEY, clientId);
+        model.setExtra(LoginHelper.CLIENT_KEY, client.getClientId());
         // 生成token
         LoginHelper.login(loginUser, model);
-
-        loginService.recordLogininfor(loginUser.getTenantId(), username, Constants.LOGIN_SUCCESS, MessageUtils.message("user.login.success"));
-        loginService.recordLoginInfo(user.getUserId());
 
         LoginVo loginVo = new LoginVo();
         loginVo.setAccessToken(StpUtil.getTokenValue());
         loginVo.setExpireIn(StpUtil.getTokenTimeout());
-        loginVo.setClientId(clientId);
+        loginVo.setClientId(client.getClientId());
         return loginVo;
     }
 
@@ -114,21 +108,19 @@ public class PasswordAuthStrategy implements IAuthStrategy {
     }
 
     private SysUserVo loadUserByUsername(String tenantId, String username) {
-        SysUser user = userMapper.selectOne(new LambdaQueryWrapper<SysUser>()
-            .select(SysUser::getUserName, SysUser::getStatus)
-            .eq(TenantHelper.isEnable(), SysUser::getTenantId, tenantId)
-            .eq(SysUser::getUserName, username));
-        if (ObjectUtil.isNull(user)) {
-            log.info("登录用户：{} 不存在.", username);
-            throw new UserException("user.not.exists", username);
-        } else if (UserStatus.DISABLE.getCode().equals(user.getStatus())) {
-            log.info("登录用户：{} 已被停用.", username);
-            throw new UserException("user.blocked", username);
-        }
-        if (TenantHelper.isEnable()) {
-            return userMapper.selectTenantUserByUserName(username, tenantId);
-        }
-        return userMapper.selectUserByUserName(username);
+        return TenantHelper.dynamic(tenantId, () -> {
+            SysUser user = userMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+                .select(SysUser::getUserName, SysUser::getStatus)
+                .eq(SysUser::getUserName, username));
+            if (ObjectUtil.isNull(user)) {
+                log.info("登录用户：{} 不存在.", username);
+                throw new UserException("user.not.exists", username);
+            } else if (UserStatus.DISABLE.getCode().equals(user.getStatus())) {
+                log.info("登录用户：{} 已被停用.", username);
+                throw new UserException("user.blocked", username);
+            }
+            return userMapper.selectUserByUserName(username);
+        });
     }
 
 }

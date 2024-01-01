@@ -2,10 +2,14 @@ package org.dromara.common.mybatis.handler;
 
 import cn.hutool.core.annotation.AnnotationUtil;
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.collection.ConcurrentHashSet;
-import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.ClassUtil;
 import cn.hutool.core.util.ObjectUtil;
+import lombok.extern.slf4j.Slf4j;
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.Parenthesis;
+import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import org.dromara.common.core.domain.dto.RoleDTO;
 import org.dromara.common.core.domain.model.LoginUser;
 import org.dromara.common.core.exception.ServiceException;
@@ -17,12 +21,6 @@ import org.dromara.common.mybatis.annotation.DataPermission;
 import org.dromara.common.mybatis.enums.DataScopeType;
 import org.dromara.common.mybatis.helper.DataPermissionHelper;
 import org.dromara.common.satoken.utils.LoginHelper;
-import lombok.extern.slf4j.Slf4j;
-import net.sf.jsqlparser.JSQLParserException;
-import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.expression.Parenthesis;
-import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
-import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import org.springframework.context.expression.BeanFactoryResolver;
 import org.springframework.expression.BeanResolver;
 import org.springframework.expression.ExpressionParser;
@@ -51,11 +49,6 @@ public class PlusDataPermissionHandler {
     private final Map<String, DataPermission> dataPermissionCacheMap = new ConcurrentHashMap<>();
 
     /**
-     * 无效注解方法缓存用于快速返回
-     */
-    private final Set<String> invalidCacheSet = new ConcurrentHashSet<>();
-
-    /**
      * spel 解析器
      */
     private final ExpressionParser parser = new SpelExpressionParser();
@@ -68,10 +61,6 @@ public class PlusDataPermissionHandler {
 
     public Expression getSqlSegment(Expression where, String mappedStatementId, boolean isSelect) {
         DataColumn[] dataColumns = findAnnotation(mappedStatementId);
-        if (ArrayUtil.isEmpty(dataColumns)) {
-            invalidCacheSet.add(mappedStatementId);
-            return where;
-        }
         LoginUser currentUser = DataPermissionHelper.getVariable("user");
         if (ObjectUtil.isNull(currentUser)) {
             currentUser = LoginHelper.getLoginUser();
@@ -155,12 +144,17 @@ public class PlusDataPermissionHandler {
         return "";
     }
 
-    private DataColumn[] findAnnotation(String mappedStatementId) {
+    public DataColumn[] findAnnotation(String mappedStatementId) {
         StringBuilder sb = new StringBuilder(mappedStatementId);
         int index = sb.lastIndexOf(".");
         String clazzName = sb.substring(0, index);
         String methodName = sb.substring(index + 1, sb.length());
-        Class<?> clazz = ClassUtil.loadClass(clazzName);
+        Class<?> clazz;
+        try {
+            clazz = ClassUtil.loadClass(clazzName);
+        } catch (Exception e) {
+            return null;
+        }
         List<Method> methods = Arrays.stream(ClassUtil.getDeclaredMethods(clazz))
             .filter(method -> method.getName().equals(methodName)).toList();
         DataPermission dataPermission;
@@ -189,10 +183,4 @@ public class PlusDataPermissionHandler {
         return null;
     }
 
-    /**
-     * 是否为无效方法 无数据权限
-     */
-    public boolean isInvalid(String mappedStatementId) {
-        return invalidCacheSet.contains(mappedStatementId);
-    }
 }
