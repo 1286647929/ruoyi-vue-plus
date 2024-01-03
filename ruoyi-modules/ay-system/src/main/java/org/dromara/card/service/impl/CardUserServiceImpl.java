@@ -2,6 +2,7 @@ package org.dromara.card.service.impl;
 
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.date.DateTime;
+import cn.hutool.core.date.DateUnit;
 import cn.hutool.core.date.DateUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -45,7 +46,7 @@ public class CardUserServiceImpl implements ICardUserService {
      * 查询用户信息
      */
     @Override
-    public CardUserVo queryById(Long userId){
+    public CardUserVo queryById(Long userId) {
         return baseMapper.selectVoById(userId);
     }
 
@@ -74,7 +75,7 @@ public class CardUserServiceImpl implements ICardUserService {
         lqw.like(StringUtils.isNotBlank(bo.getUserName()), CardUser::getUserName, bo.getUserName());
         lqw.eq(StringUtils.isNotBlank(bo.getUserType()), CardUser::getUserType, bo.getUserType());
         lqw.between(params.get("beginExpireTime") != null && params.get("endExpireTime") != null,
-            CardUser::getExpireTime ,params.get("beginExpireTime"), params.get("endExpireTime"));
+            CardUser::getExpireTime, params.get("beginExpireTime"), params.get("endExpireTime"));
         lqw.eq(StringUtils.isNotBlank(bo.getStatus()), CardUser::getStatus, bo.getStatus());
         lqw.eq(StringUtils.isNotBlank(bo.getLoginIp()), CardUser::getLoginIp, bo.getLoginIp());
         return lqw;
@@ -107,7 +108,7 @@ public class CardUserServiceImpl implements ICardUserService {
     /**
      * 保存前的数据校验
      */
-    private void validEntityBeforeSave(CardUser entity){
+    private void validEntityBeforeSave(CardUser entity) {
         //TODO 做一些数据校验,如唯一约束
     }
 
@@ -116,7 +117,7 @@ public class CardUserServiceImpl implements ICardUserService {
      */
     @Override
     public Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid) {
-        if(isValid){
+        if (isValid) {
             //TODO 做一些业务上的校验,判断是否需要校验
         }
         return baseMapper.deleteBatchIds(ids) > 0;
@@ -124,9 +125,7 @@ public class CardUserServiceImpl implements ICardUserService {
 
     /**
      * 修改状态
-     * @param userId
-     * @param status
-     * @return
+     *
      */
     @Override
     public int updateUserStatus(Long userId, String status) {
@@ -143,12 +142,12 @@ public class CardUserServiceImpl implements ICardUserService {
             .eq(CardUser::getUserName, userName);
 
         CardUser cardUser = baseMapper.selectOne(queryWrapper);
-        if(cardUser != null) {
-            if (!cardUser.getStatus().equals("0")){
+        if (cardUser != null) {
+            if (!cardUser.getStatus().equals("0")) {
                 throw new ServiceException("用户已被停用！");
             }
             return cardUser;
-        }else {
+        } else {
             throw new ServiceException("用户名错误！");
         }
     }
@@ -160,60 +159,62 @@ public class CardUserServiceImpl implements ICardUserService {
             .eq(CardUser::getUserName, userName);
 
         CardUserVo cardUserVo = baseMapper.selectVoOne(queryWrapper);
-        if(cardUserVo != null) {
+        if (cardUserVo != null) {
             return cardUserVo;
-        }else {
+        } else {
             throw new ServiceException("用户名错误！");
         }
     }
 
     @Override
-    public CardUserVo expireByUserName(String userName,String cardKey) {
+    public CardUserVo expireByUserName(String userName, String cardKey) {
         LambdaQueryWrapper<CardCarmi> queryWrapper = Wrappers.lambdaQuery();
-        queryWrapper.eq(CardCarmi::getCardKey,cardKey);
+        queryWrapper.eq(CardCarmi::getCardKey, cardKey);
         CardCarmi cardCarmi = cardCarmiMapper.selectOne(queryWrapper);
         if (cardCarmi == null) {
             throw new ServiceException("卡密不存在！");
         }
         String status = cardCarmi.getStatus();
-        if (status.equals("1")){
+        if (status.equals("1")) {
             throw new ServiceException("卡密已被使用！");
         }
         String cardType = cardCarmi.getCardType();
 
         CardUserVo cardUserVo = queryByUserName(userName);
         Date expireTime = cardUserVo.getExpireTime();
-        if (expireTime == null){
+        if (expireTime == null || DateUtil.between(DateUtil.date(), expireTime, DateUnit.SECOND, false) < 0) {
             expireTime = DateUtil.date();
         }
         DateTime dateTime = DateUtil.offsetDay(expireTime, Convert.toInt(cardType));
 
         LambdaUpdateWrapper<CardUser> updateWrapper = Wrappers.lambdaUpdate();
         updateWrapper.set(CardUser::getExpireTime, dateTime)
-            .eq(CardUser::getUserName,userName);
+            .eq(CardUser::getUserName, userName);
         int update = baseMapper.update(null, updateWrapper);
-        if (update>0){
+        if (update > 0) {
 //            cardCarmiMapper.updateStatus(cardKey);
-            cardCarmiMapper.update(null,new LambdaUpdateWrapper<CardCarmi>()
-                .set(CardCarmi::getStatus,1)
-                .set(CardCarmi::getRemark,"使用者："+userName)
-                .eq(CardCarmi::getCardKey,cardKey));
+            cardCarmiMapper.update(null, new LambdaUpdateWrapper<CardCarmi>()
+                .set(CardCarmi::getStatus, 1)
+                .set(CardCarmi::getRemark, "使用者：" + userName)
+                .set(CardCarmi::getUpdateTime, DateUtil.date())
+                .eq(CardCarmi::getCardKey, cardKey));
             return baseMapper.selectVoById(cardUserVo.getUserId());
-        }else {
+        } else {
             throw new ServiceException("续费失败！请重试");
         }
     }
 
     /**
      * 重置用户密码
-     * @param userId    用户id
-     * @param password  用户密码
+     *
+     * @param userId   用户id
+     * @param password 用户密码
      * @return
      */
     @Override
     public int resetUserPwd(Long userId, String password) {
-        return baseMapper.update(null,new LambdaUpdateWrapper<CardUser>()
-            .set(CardUser::getPassword,password)
-            .eq(CardUser::getUserId,userId));
+        return baseMapper.update(null, new LambdaUpdateWrapper<CardUser>()
+            .set(CardUser::getPassword, password)
+            .eq(CardUser::getUserId, userId));
     }
 }

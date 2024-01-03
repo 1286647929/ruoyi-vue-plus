@@ -73,6 +73,12 @@ public class CardCarmiVo implements Serializable {
     private Date createTime;
 
     /**
+     * 更新时间
+     */
+    @ExcelProperty(value = "更新时间")
+    private Date updateTime;
+
+    /**
      * 备注
      */
     @ExcelProperty(value = "备注")
